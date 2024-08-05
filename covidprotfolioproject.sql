@@ -65,6 +65,63 @@ from coviddeaths
 group by location, population, continent
 order by percent_population_infected desc
 
+SELECT
+    c.location,
+    c.population,
+    c.date,
+    c.total_cases AS highest_infection_count,
+    (c.total_cases / c.population) * 100 AS percent_population_infected
+FROM
+    coviddeaths c
+JOIN
+    (SELECT location, population, MAX(total_cases) AS max_cases
+     FROM coviddeaths
+     GROUP BY location, population) sub
+ON
+    c.location = sub.location AND
+    c.population = sub.population AND
+    c.total_cases = sub.max_cases
+ORDER BY
+    percent_population_infected DESC
+LIMIT 50000;
+
+
+
+WITH DateSeries AS (
+    SELECT DISTINCT date
+    FROM coviddeaths
+),
+LocationSeries AS (
+    SELECT DISTINCT location, population
+    FROM coviddeaths
+),
+AllCombinations AS (
+    SELECT 
+        ls.location,
+        ls.population,
+        ds.date
+    FROM 
+        LocationSeries ls
+    CROSS JOIN 
+        DateSeries ds
+)
+SELECT
+    ac.location,
+    ac.population,
+    ac.date,
+    COALESCE(cd.total_cases, 0) AS infection_count,
+    (COALESCE(cd.total_cases, 0) / ac.population) * 100 AS percent_population_infected
+FROM
+    AllCombinations ac
+LEFT JOIN
+    coviddeaths cd
+ON
+    ac.location = cd.location AND ac.date = cd.date
+ORDER BY
+    ac.location,
+    ac.date;
+
+
 -- Showing Countries with Highest Death Count per Population
 
 select location, max(total_deaths) as total_death_count
